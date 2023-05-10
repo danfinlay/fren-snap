@@ -29,7 +29,9 @@
   "dependencies": {
     "@metamask/snaps-types": "^0.32.2",
     "@metamask/snaps-ui": "^0.32.2",
-    "buffer": "^6.0.3"
+    "buffer": "^6.0.3",
+    "openai": "^3.2.1",
+    "superstruct": "^1.0.3"
   },
   "devDependencies": {
     "@lavamoat/allow-scripts": "^2.0.3",

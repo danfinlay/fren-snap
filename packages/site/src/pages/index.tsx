@@ -202,6 +202,37 @@ const Index = () => {
             !shouldDisplayReconnectButton(state.installedSnap)
           }
         />
+
+        <Card
+          content={{
+            title: 'Request AI permission',
+            description: 'Request permission to use your AI API.',
+            button: (
+              <button
+                onClick={handleSendHelloClick}
+                disabled={!state.installedSnap}
+              />
+            ),
+          }}
+          disabled={!state.installedSnap}
+          fullWidth={
+            state.isFlask &&
+            Boolean(state.installedSnap) &&
+            !shouldDisplayReconnectButton(state.installedSnap)
+          }
+        />
+
+        <!-- This one will provide a series of input fields to input the LLM config -->
+        <Card
+          content={{
+            title: 'Propose AI Provider',
+            description: 'Provide API configuration for your snap to access an AI.',
+            button: (
+              <button
+                onClick={handleSendHelloClick}
+
+
+
         <Notice>
           <p>
             Please note that the <b>snap.manifest.json</b> and{' '}
