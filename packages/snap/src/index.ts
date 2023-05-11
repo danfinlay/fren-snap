@@ -1,7 +1,7 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import { panel, text } from '@metamask/snaps-ui';
 import { assert, object, string, optional } from 'superstruct';
-import { SafeParseReturnType, z } from 'zod';
+import { z } from 'zod';
 import { messages } from './messages';
 import SnapMap from './SnapMap';
 
@@ -124,13 +124,11 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       }
 
       console.log('parsing', request.params.chat);
-      try {
-        chat = Chat.safeParse(request.params.chat);
-      } catch (err) {
-        console.error(err);
-        throw new Error('Invalid request.');
+      chat = Chat.safeParse(request.params.chat);
+      if (!chat.success) {
+        throw new Error('Invalid chat request.');
       }
-      response = await requestChat(config.apiKey, chat.data);
+      response = await requestChat(config.apiKey, chat?.data || []);
       console.dir({ response });
       return response;
 

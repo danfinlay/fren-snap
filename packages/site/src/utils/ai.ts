@@ -1,4 +1,5 @@
-import { Json } from '@metamask/snaps-types';
+import { z } from 'zod';
+import { IChatMessage } from '../types/custom';
 import { defaultSnapOrigin } from '../config';
 
 /**
@@ -27,18 +28,27 @@ export const offerAIConfig = async (config: string) => {
   });
 };
 
-type ChatMessage = {
-  role: string;
-  content: string;
-};
+const Chat = z.object({
+  role: z.string(),
+  content: z.string(),
+});
 
-export const sendAIPrompt = async (prompt: ChatMessage[]) => {
+export const sendAIPrompt = async (
+  prompt: IChatMessage[],
+): Promise<IChatMessage> => {
   console.dir({ prompt });
-  return await window.ethereum.request({
+  const result = await window.ethereum.request({
     method: 'wallet_invokeSnap',
     params: {
       snapId: defaultSnapOrigin,
       request: { method: 'ai_request', params: { chat: prompt } },
     },
   });
+
+  const chat = Chat.safeParse(result);
+  if (!chat.success) {
+    throw new Error('Invalid chat response');
+  }
+
+  return chat.data;
 };

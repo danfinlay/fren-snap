@@ -12,3 +12,8 @@ declare global {
     ethereum: MetaMaskInpageProvider;
   }
 }
+
+export type IChatMessage = {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+};

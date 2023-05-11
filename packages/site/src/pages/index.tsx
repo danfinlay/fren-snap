@@ -1,6 +1,8 @@
 import { SetStateAction, useContext, useState } from 'react';
 import { ReactReplView } from 'awesome-react-repl';
+import { z } from 'zod';
 import styled from 'styled-components';
+import { Json } from '@metamask/snaps-types';
 import { MetamaskActions, MetaMaskContext } from '../hooks';
 import {
   connectSnap,
@@ -15,10 +17,10 @@ import {
   ConnectButton,
   InstallFlaskButton,
   ReconnectButton,
-  SendHelloButton,
   FormCard,
   Card,
 } from '../components';
+import { IChatMessage } from '../types/custom';
 
 const Container = styled.div`
   display: flex;
@@ -187,25 +189,7 @@ const Index = () => {
     }
   };
 
-  const handleSendHelloClick = async () => {
-    try {
-      await sendHello();
-    } catch (e) {
-      console.error(e);
-      dispatch({ type: MetamaskActions.SetError, payload: e });
-    }
-  };
-
-  const handleRequestAIPermission = async () => {
-    try {
-      await requestAIPermission();
-    } catch (e) {
-      console.error(e);
-      dispatch({ type: MetamaskActions.SetError, payload: e });
-    }
-  };
-
-  const handleOfferAIConfig = async (config: Json) => {
+  const handleOfferAIConfig = async (config) => {
     try {
       return await offerAIConfig(config);
     } catch (e) {
@@ -331,7 +315,7 @@ const Index = () => {
                   },
                 ]);
 
-                const chatMessages = [
+                const chatMessages: IChatMessage[] = [
                   {
                     role: 'user',
                     content: userInput,
@@ -345,9 +329,21 @@ const Index = () => {
                 });
 
                 sendAIPrompt(chatMessages)
-                  .then((result: any) => {
+                  .then((result: IChatMessage) => {
+                    const ChatM = z.object({
+                      role: z.string(),
+                      content: z.string(),
+                    });
+                    ChatM.parse(result);
                     console.dir({ result });
-                    setLines((prevLines: any) => [...prevLines, result]);
+                    setLines((prevLines: Line[]) => {
+                      const newLine: Line = {
+                        type: 'output',
+                        value: result.content,
+                      };
+                      const newLines: Line[] = [...prevLines, newLine];
+                      return newLines;
+                    });
                   })
                   .catch((e: { message: any }) => {
                     setLines((prevLines: any) => [
