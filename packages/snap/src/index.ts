@@ -1,11 +1,12 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import { panel, text } from '@metamask/snaps-ui';
-import { Configuration, OpenAIApi } from 'openai';
-import { assert, object, string, optional } from 'superstruct';
+import { assert, object, string, optional, array } from 'superstruct';
+import { OpenAIClient } from 'openai-fetch';
 import { messages } from './messages';
 import SnapMap from './SnapMap';
 
 const ConfigurationParameters = object({
+  type: string(),
   apiKey: string(),
   organization: optional(string()),
   username: optional(string()),
@@ -14,6 +15,13 @@ const ConfigurationParameters = object({
   basePath: optional(string()),
   baseOptions: optional(string()),
 });
+
+const Chat = array(
+  object({
+    role: string(),
+    content: string(),
+  }),
+);
 
 /**
  * Handle incoming JSON-RPC requests, sent through `wallet_invokeSnap`.
@@ -32,15 +40,16 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   let times;
   let approved;
   let config;
-  let openai, response;
+  let client, response;
 
   switch (request.method) {
     case 'set_config':
+      assert(request.params, ConfigurationParameters);
       approved = await snap.request({
         method: 'snap_dialog',
         params: {
           type: 'confirmation',
-          content: messages.SET_CONFIG,
+          content: messages.SET_CONFIG(origin),
         },
       });
 
@@ -48,16 +57,33 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
         throw new Error('User rejected request.');
       }
 
-      assert(request.params, ConfigurationParameters);
       await SnapMap.setItem('config', request.params);
       return true;
 
     case 'ai_permission':
+      config = await SnapMap.getItem('config');
+      if (!config) {
+        await snap.request({
+          method: 'snap_dialog',
+          params: {
+            type: 'confirmation',
+            content: panel([
+              text(`The site at **${origin}** is requesting an AI provider.`),
+              text(
+                `Unfortunately, you don't have one currently. You'll need to get one!`,
+              ),
+            ]),
+          },
+        });
+
+        throw new Error('No AI provider set.');
+      }
+
       approved = await snap.request({
         method: 'snap_dialog',
         params: {
           type: 'confirmation',
-          content: messages.AI_PERMISSION,
+          content: messages.AI_PERMISSION(origin),
         },
       });
 
@@ -68,18 +94,39 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       return true;
 
     case 'ai_request':
+      config = await SnapMap.getItem('config');
+      assert(config, ConfigurationParameters);
+      if (!config) {
+        await snap.request({
+          method: 'snap_dialog',
+          params: {
+            type: 'confirmation',
+            content: panel([
+              text(`The site at **${origin}** is requesting an AI provider.`),
+              text(
+                `Unfortunately, you don't have one currently. You'll need to get one!`,
+              ),
+            ]),
+          },
+        });
+        throw new Error('No AI provider set.');
+      }
+
       approved = await SnapMap.getItem(`ai_permission:${origin}`);
       if (!approved) {
         throw new Error('Unauthorized request.');
       }
-      config = await SnapMap.getItem('config');
-      if (!config) {
-        throw new Error('No AI provider set.');
-      }
 
-      openai = await requestOpenAI(origin);
-      response = Object.keys(openai);
-
+      assert(
+        request,
+        object({
+          params: object({
+            chat: Chat,
+          }),
+        }),
+      );
+      response = await requestChat(config.apiKey, request.params.chat);
+      console.dir({ response });
       return response;
 
     case 'hello':
@@ -121,9 +168,8 @@ async function requestOpenAI(origin: string): Promise<OpenAIApi> {
     throw new Error('No AI provider set.');
   }
 
-  const configuration = new Configuration(config);
-  const openai = new OpenAIApi(configuration);
-  return openai;
+  const response = await requestChat(config.apiKey, messages);
+  return response;
 }
 
 /**
@@ -138,4 +184,32 @@ async function getTimes(): Promise<number> {
   }
 
   return 0;
+}
+
+/**
+ * Request a chat from the OpenAI API.
+ *
+ * @param apiKey - The API key to use.
+ * @param messages - The messages to send to the API.
+ * @param chatMessages
+ */
+async function requestChat(
+  apiKey: string,
+  chatMessages: { role: string; content: string }[],
+): Promise<unknown> {
+  console.log('requesting chat', chatMessages);
+  return fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-3.5-turbo',
+      messages: chatMessages,
+    }),
+  })
+    .then((response) => response.json())
+    .then((data) => console.log(data))
+    .catch((error) => console.error(error));
 }

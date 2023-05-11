@@ -1,3 +1,4 @@
+import { Json } from '@metamask/snaps-types';
 import { defaultSnapOrigin } from '../config';
 
 /**
@@ -11,22 +12,32 @@ export const requestAIPermission = async () => {
   });
 };
 
-export const offerAIConfig = async (config) => {
-  await window.ethereum.request({
+export const offerAIConfig = async (config: string) => {
+  console.log('offering config', config);
+  console.log(typeof config);
+  const parsed = JSON.parse(config);
+  console.log(parsed);
+
+  return await window.ethereum.request({
     method: 'wallet_invokeSnap',
     params: {
       snapId: defaultSnapOrigin,
-      request: { method: 'set_config', params: config },
+      request: { method: 'set_config', params: { ...parsed } },
     },
   });
 };
 
-export const sendAIPrompt = async (prompt) => {
-  await window.ethereum.request({
+type ChatMessage = {
+  role: string;
+  content: string;
+};
+
+export const sendAIPrompt = async (prompt: ChatMessage[]) => {
+  return await window.ethereum.request({
     method: 'wallet_invokeSnap',
     params: {
       snapId: defaultSnapOrigin,
-      request: { method: 'ai_request', params: prompt },
+      request: { method: 'ai_request', params: { prompt } },
     },
   });
 };

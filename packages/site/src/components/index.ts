@@ -1,5 +1,6 @@
 export * from './Buttons';
 export * from './Card';
+export * from './FormCard';
 export * from './Footer';
 export * from './Header';
 export * from './MetaMask';

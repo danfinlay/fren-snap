@@ -1,10 +1,14 @@
-import { useContext } from 'react';
+import { SetStateAction, useContext, useState } from 'react';
+import { ReactReplView } from 'awesome-react-repl';
 import styled from 'styled-components';
 import { MetamaskActions, MetaMaskContext } from '../hooks';
 import {
   connectSnap,
   getSnap,
   sendHello,
+  requestAIPermission,
+  offerAIConfig,
+  sendAIPrompt,
   shouldDisplayReconnectButton,
 } from '../utils';
 import {
@@ -12,6 +16,7 @@ import {
   InstallFlaskButton,
   ReconnectButton,
   SendHelloButton,
+  FormCard,
   Card,
 } from '../components';
 
@@ -81,6 +86,27 @@ const Notice = styled.div`
   }
 `;
 
+const TerminalContainer = styled.div`
+  display: flex;
+  width: 100%; /* set the width of the parent element */
+
+  & > * {
+    background-color: rgb(51, 51, 51);
+    border-radius: 4px;
+    box-shadow: rgba(0, 0, 0, 0.5) 0px 2px 2px 0px;
+    color: rgb(255, 255, 255);
+    font-family: monospace;
+    font-size: 16px;
+    font-weight: 700;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    transition: background-color 0.1s linear;
+
+    /* Add this to make the terminal take the full width of its parent */
+    flex-grow: 1;
+  }
+`;
+
 const ErrorMessage = styled.div`
   background-color: ${({ theme }) => theme.colors.error.muted};
   border: 1px solid ${({ theme }) => theme.colors.error.default};
@@ -99,8 +125,52 @@ const ErrorMessage = styled.div`
   }
 `;
 
+const ConfigForm = (props: { handleOfferAIConfig: any }) => {
+  const { handleOfferAIConfig } = props;
+  const [config, setConfig] = useState(
+    JSON.stringify({ type: 'openai', apiKey: '<your api key>' }),
+  );
+
+  const content = {
+    description:
+      'Load AI provider into your wallet: Fill in this configuration text. By default you can just fill in an OpenAI API key, but other providers have formats that may work here.',
+  };
+
+  const handleSubmit = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    console.log('submitting', config);
+    const res = await handleOfferAIConfig(config);
+    console.log('res is', res);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <FormCard content={content}>
+        <textarea
+          value={config}
+          onChange={(event) => {
+            console.log('updating config to ', event.target.value);
+            setConfig(event.target.value);
+          }}
+          rows={5}
+          style={{ width: '100%', resize: 'none' }}
+        />
+        <button type="submit" style={{ marginTop: '1rem' }}>
+          Submit
+        </button>
+      </FormCard>
+    </form>
+  );
+};
+
+type Line = {
+  type: 'input' | 'output';
+  value: string;
+};
+type Lines = Line[];
 const Index = () => {
   const [state, dispatch] = useContext(MetaMaskContext);
+  const [lines, setLines] = useState<Lines>([]);
 
   const handleConnectClick = async () => {
     try {
@@ -126,13 +196,32 @@ const Index = () => {
     }
   };
 
+  const handleRequestAIPermission = async () => {
+    try {
+      await requestAIPermission();
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: MetamaskActions.SetError, payload: e });
+    }
+  };
+
+  const handleOfferAIConfig = async (config: Json) => {
+    try {
+      return await offerAIConfig(config);
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: MetamaskActions.SetError, payload: e });
+    }
+  };
+
   return (
     <Container>
       <Heading>
-        Welcome to <Span>template-snap</Span>
+        Welcome to <Span>Fren</Span>
       </Heading>
       <Subtitle>
-        Get started by editing <code>src/index.ts</code>
+        Fren is your personal AI assistant that you can take around the web, who
+        lives in your wallet.
       </Subtitle>
       <CardContainer>
         {state.error && (
@@ -183,7 +272,7 @@ const Index = () => {
             disabled={!state.installedSnap}
           />
         )}
-        <Card
+        {/* <Card
           content={{
             title: 'Send Hello message',
             description:
@@ -201,7 +290,9 @@ const Index = () => {
             Boolean(state.installedSnap) &&
             !shouldDisplayReconnectButton(state.installedSnap)
           }
-        />
+        /> */}
+
+        <ConfigForm handleOfferAIConfig={handleOfferAIConfig} />
 
         <Card
           content={{
@@ -209,9 +300,11 @@ const Index = () => {
             description: 'Request permission to use your AI API.',
             button: (
               <button
-                onClick={handleSendHelloClick}
+                onClick={requestAIPermission}
                 disabled={!state.installedSnap}
-              />
+              >
+                Request
+              </button>
             ),
           }}
           disabled={!state.installedSnap}
@@ -222,25 +315,53 @@ const Index = () => {
           }
         />
 
-        <!-- This one will provide a series of input fields to input the LLM config -->
-        <Card
-          content={{
-            title: 'Propose AI Provider',
-            description: 'Provide API configuration for your snap to access an AI.',
-            button: (
-              <button
-                onClick={handleSendHelloClick}
+        {state.installedSnap && (
+          <TerminalContainer>
+            <ReactReplView
+              title="Your AI Chat"
+              width="100%"
+              height={300}
+              lines={lines}
+              onSubmit={(userInput: string) => {
+                setLines((prevLines: any) => [
+                  ...prevLines,
+                  {
+                    type: 'input',
+                    value: userInput,
+                  },
+                ]);
 
-
-
-        <Notice>
-          <p>
-            Please note that the <b>snap.manifest.json</b> and{' '}
-            <b>package.json</b> must be located in the server root directory and
-            the bundle must be hosted at the location specified by the location
-            field.
-          </p>
-        </Notice>
+                const chatMessages = lines.map((line) => {
+                  return {
+                    role: line.type === 'input' ? 'user' : 'assistant',
+                    content: line.value,
+                  };
+                });
+                sendAIPrompt(chatMessages)
+                  .then((result: any) => {
+                    setLines((prevLines: any) => [
+                      ...prevLines,
+                      {
+                        type: 'output',
+                        value: result,
+                      },
+                    ]);
+                  })
+                  .catch((e: { message: any }) => {
+                    setLines((prevLines: any) => [
+                      ...prevLines,
+                      {
+                        type: 'output',
+                        value: `Error: ${e.message}`,
+                      },
+                    ]);
+                    console.error(e);
+                    return e.message;
+                  });
+              }}
+            />
+          </TerminalContainer>
+        )}
       </CardContainer>
     </Container>
   );

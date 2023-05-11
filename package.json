@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@metamask/snaps-types": "^0.32.2",
+    "awesome-react-repl": "^1.0.3",
     "openai": "^3.2.1"
   }
 }

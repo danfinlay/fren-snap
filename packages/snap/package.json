@@ -31,6 +31,7 @@
     "@metamask/snaps-ui": "^0.32.2",
     "buffer": "^6.0.3",
     "openai": "^3.2.1",
+    "openai-fetch": "^1.2.0",
     "superstruct": "^1.0.3"
   },
   "devDependencies": {
