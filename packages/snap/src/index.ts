@@ -1,7 +1,7 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import { panel, text } from '@metamask/snaps-ui';
-import { assert, object, string, optional, array } from 'superstruct';
-import { OpenAIClient } from 'openai-fetch';
+import { assert, object, string, optional } from 'superstruct';
+import { SafeParseReturnType, z } from 'zod';
 import { messages } from './messages';
 import SnapMap from './SnapMap';
 
@@ -16,10 +16,10 @@ const ConfigurationParameters = object({
   baseOptions: optional(string()),
 });
 
-const Chat = array(
-  object({
-    role: string(),
-    content: string(),
+const Chat = z.array(
+  z.object({
+    role: z.string(),
+    content: z.string(),
   }),
 );
 
@@ -40,7 +40,8 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   let times;
   let approved;
   let config;
-  let client, response;
+  let response;
+  let chat;
 
   switch (request.method) {
     case 'set_config':
@@ -117,15 +118,19 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
         throw new Error('Unauthorized request.');
       }
 
-      assert(
-        request,
-        object({
-          params: object({
-            chat: Chat,
-          }),
-        }),
-      );
-      response = await requestChat(config.apiKey, request.params.chat);
+      console.log('requesting');
+      if (!('chat' in request.params)) {
+        throw new Error('Invalid request.');
+      }
+
+      console.log('parsing', request.params.chat);
+      try {
+        chat = Chat.safeParse(request.params.chat);
+      } catch (err) {
+        console.error(err);
+        throw new Error('Invalid request.');
+      }
+      response = await requestChat(config.apiKey, chat.data);
       console.dir({ response });
       return response;
 
@@ -150,27 +155,6 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       throw new Error('Method not found.');
   }
 };
-
-/**
- * Request the OpenAI API.
- *
- * @param origin - The origin of the request
- */
-async function requestOpenAI(origin: string): Promise<OpenAIApi> {
-  const approved = await SnapMap.getItem(`ai_permission:${origin}`);
-  if (!approved) {
-    throw new Error('Unauthorized request.');
-  }
-  const config = await SnapMap.getItem('config');
-  assert(config, ConfigurationParameters);
-
-  if (!config) {
-    throw new Error('No AI provider set.');
-  }
-
-  const response = await requestChat(config.apiKey, messages);
-  return response;
-}
 
 /**
  * Get the number of times the user has said hello.
@@ -210,6 +194,6 @@ async function requestChat(
     }),
   })
     .then((response) => response.json())
-    .then((data) => console.log(data))
+    .then((data) => data.choices[0].message)
     .catch((error) => console.error(error));
 }

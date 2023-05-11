@@ -331,21 +331,23 @@ const Index = () => {
                   },
                 ]);
 
-                const chatMessages = lines.map((line) => {
-                  return {
+                const chatMessages = [
+                  {
+                    role: 'user',
+                    content: userInput,
+                  },
+                ];
+                lines.forEach((line) => {
+                  chatMessages.push({
                     role: line.type === 'input' ? 'user' : 'assistant',
                     content: line.value,
-                  };
+                  });
                 });
+
                 sendAIPrompt(chatMessages)
                   .then((result: any) => {
-                    setLines((prevLines: any) => [
-                      ...prevLines,
-                      {
-                        type: 'output',
-                        value: result,
-                      },
-                    ]);
+                    console.dir({ result });
+                    setLines((prevLines: any) => [...prevLines, result]);
                   })
                   .catch((e: { message: any }) => {
                     setLines((prevLines: any) => [

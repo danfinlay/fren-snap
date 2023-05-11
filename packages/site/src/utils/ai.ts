@@ -33,11 +33,12 @@ type ChatMessage = {
 };
 
 export const sendAIPrompt = async (prompt: ChatMessage[]) => {
+  console.dir({ prompt });
   return await window.ethereum.request({
     method: 'wallet_invokeSnap',
     params: {
       snapId: defaultSnapOrigin,
-      request: { method: 'ai_request', params: { prompt } },
+      request: { method: 'ai_request', params: { chat: prompt } },
     },
   });
 };

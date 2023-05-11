@@ -32,7 +32,8 @@
     "buffer": "^6.0.3",
     "openai": "^3.2.1",
     "openai-fetch": "^1.2.0",
-    "superstruct": "^1.0.3"
+    "superstruct": "^1.0.3",
+    "zod": "^3.21.4"
   },
   "devDependencies": {
     "@lavamoat/allow-scripts": "^2.0.3",
