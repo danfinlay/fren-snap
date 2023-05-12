@@ -7,10 +7,11 @@ import { MetamaskActions, MetaMaskContext } from '../hooks';
 import {
   connectSnap,
   getSnap,
-  sendHello,
   requestAIPermission,
   offerAIConfig,
   sendAIPrompt,
+  loadDocumentIntoEmbeddings,
+  informedQuery,
   shouldDisplayReconnectButton,
 } from '../utils';
 import {
@@ -143,6 +144,7 @@ const ConfigForm = (props: { handleOfferAIConfig: any }) => {
     console.log('submitting', config);
     const res = await handleOfferAIConfig(config);
     console.log('res is', res);
+    setConfig('Loaded!');
   };
 
   return (
@@ -152,6 +154,42 @@ const ConfigForm = (props: { handleOfferAIConfig: any }) => {
           value={config}
           onChange={(event) => {
             console.log('updating config to ', event.target.value);
+            setConfig(event.target.value);
+          }}
+          rows={5}
+          style={{ width: '100%', resize: 'none' }}
+        />
+        <button type="submit" style={{ marginTop: '1rem' }}>
+          Submit
+        </button>
+      </FormCard>
+    </form>
+  );
+};
+
+const EmbeddingLoadingForm = (props: { handleOfferDoc: any }) => {
+  const { handleOfferDoc } = props;
+  const [config, setConfig] = useState('');
+
+  const content = {
+    description:
+      'Load an additional document to help your Fren answer your questions with more context!',
+  };
+
+  const handleSubmit = async (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    console.log('submitting', config);
+    const res = await handleOfferDoc(config);
+    console.log('res is', res);
+    setConfig('Loaded!');
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <FormCard content={content}>
+        <textarea
+          value={config}
+          onChange={(event) => {
             setConfig(event.target.value);
           }}
           rows={5}
@@ -189,12 +227,22 @@ const Index = () => {
     }
   };
 
+  const handleOfferDoc = async (doc: string) => {
+    try {
+      return await loadDocumentIntoEmbeddings(doc);
+    } catch (e) {
+      console.error(e);
+      dispatch({ type: MetamaskActions.SetError, payload: e });
+    }
+  };
+
   const handleOfferAIConfig = async (config) => {
     try {
       return await offerAIConfig(config);
     } catch (e) {
       console.error(e);
       dispatch({ type: MetamaskActions.SetError, payload: e });
+      return;
     }
   };
 
@@ -256,25 +304,6 @@ const Index = () => {
             disabled={!state.installedSnap}
           />
         )}
-        {/* <Card
-          content={{
-            title: 'Send Hello message',
-            description:
-              'Display a custom message within a confirmation screen in MetaMask.',
-            button: (
-              <SendHelloButton
-                onClick={handleSendHelloClick}
-                disabled={!state.installedSnap}
-              />
-            ),
-          }}
-          disabled={!state.installedSnap}
-          fullWidth={
-            state.isFlask &&
-            Boolean(state.installedSnap) &&
-            !shouldDisplayReconnectButton(state.installedSnap)
-          }
-        /> */}
 
         <ConfigForm handleOfferAIConfig={handleOfferAIConfig} />
 
@@ -360,6 +389,8 @@ const Index = () => {
             />
           </TerminalContainer>
         )}
+
+        <EmbeddingLoadingForm handleOfferDoc={handleOfferDoc} />
       </CardContainer>
     </Container>
   );

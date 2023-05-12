@@ -13,15 +13,19 @@ type FormCardProps = {
 };
 
 const FormCardWrapper = styled.div<{ fullWidth?: boolean; disabled: boolean }>`
-  /* ... */
+  background: white;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
+  margin-top: 16px;
 `;
 
 const Title = styled.h2`
-  /* ... */
+  background: white;
 `;
 
 const Description = styled.div`
-  /* ... */
+  background: white;
 `;
 
 export const FormCard = ({

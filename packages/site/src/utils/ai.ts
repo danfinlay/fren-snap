@@ -41,7 +41,10 @@ export const sendAIPrompt = async (
     method: 'wallet_invokeSnap',
     params: {
       snapId: defaultSnapOrigin,
-      request: { method: 'ai_request', params: { chat: prompt } },
+      request: {
+        method: 'ai_request',
+        params: { method: 'chat', chat: prompt },
+      },
     },
   });
 
@@ -51,4 +54,56 @@ export const sendAIPrompt = async (
   }
 
   return chat.data;
+};
+
+export const requestEmbeddings = async (input: string): Promise<number[]> => {
+  console.log({ input });
+  const result = await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: {
+      snapId: defaultSnapOrigin,
+      request: {
+        method: 'ai_request',
+        params: { method: 'embeddings', input },
+      },
+    },
+  });
+
+  if (!Array.isArray(result)) {
+    throw new Error('Invalid embeddings response');
+  }
+
+  return result;
+};
+
+export const loadDocumentIntoEmbeddings = async (
+  document: string,
+): Promise<void> => {
+  await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: {
+      snapId: defaultSnapOrigin,
+      request: {
+        method: 'load_document_into_embeddings',
+        params: [document],
+      },
+    },
+  });
+};
+
+export const informedQuery = async (
+  prompt: IChatMessage[],
+): Promise<IChatMessage> => {
+  return await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: {
+      snapId: defaultSnapOrigin,
+      request: {
+        method: 'informed_query',
+        params: {
+          chat,
+        },
+      },
+    },
+  });
 };
