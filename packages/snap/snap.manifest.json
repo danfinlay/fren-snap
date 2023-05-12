@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Your Portable AI Assistant.",
   "proposedName": "Fren",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "git@github.com:danfinlay/fren-snap.git"
   },
   "source": {
-    "shasum": "1EaZ/J62wQ7WbNmfWQnog4k7db1MeqzQq45c+XrEX6I=",
+    "shasum": "IyaW5kxBSWRWRyaEybRr52zp/d1UcAJ0vbaMObP3LGs=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
