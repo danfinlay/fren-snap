@@ -11,7 +11,7 @@ const config: GatsbyConfig = {
       resolve: 'gatsby-plugin-manifest',
       options: {
         name: 'Fren',
-        icon: 'public/fren.png',
+        icon: './public/fren.png',
         theme_color: '#6F4CFF',
         background_color: '#FFFFFF',
         display: 'standalone',
