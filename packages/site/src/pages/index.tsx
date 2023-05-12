@@ -1,7 +1,6 @@
 import { useContext, useState } from 'react';
 import { ReactReplView } from 'awesome-react-repl';
 import { z } from 'zod';
-import splashImage from '../../splash.png';
 import styled from 'styled-components';
 import { IChatMessage } from '../../../../scripts/types';
 import { MetamaskActions, MetaMaskContext } from '../hooks';
@@ -236,7 +235,12 @@ const Index = () => {
     <Container>
       <Heading>
         Welcome to <Span>Fren</Span>
-        <img src={splashImage} width="100%" height="100%" alt="Fren" />
+        <img
+          src="http://danfinlay.com/fren/splash.png"
+          width="100%"
+          height="100%"
+          alt="Fren"
+        />
       </Heading>
       <Subtitle>
         Fren is your personal AI assistant that you can take around the web, who

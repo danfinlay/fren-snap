@@ -62,7 +62,11 @@ export const Header = ({
   return (
     <HeaderWrapper>
       <LogoWrapper>
-        <img src={mainLogo} width="60px" height="60px" />
+        <img
+          src="http://danfinlay.com/fren/fren.png"
+          width="60px"
+          height="60px"
+        />
         <Title>Fren</Title>
       </LogoWrapper>
       <RightContainer>
