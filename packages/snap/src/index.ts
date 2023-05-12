@@ -1,35 +1,20 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import { panel, text } from '@metamask/snaps-ui';
-import { assert, object, string, optional } from 'superstruct';
 import { z } from 'zod';
+import {
+  IChatMessage,
+  ChatMessage,
+  ConfigurationParameters,
+  Chat,
+  AiRequestMetaZod,
+  AiRequestMeta,
+  LoadDocumentIntoEmbeddingsParameters,
+} from '../../../scripts/types';
 import { messages } from './messages';
 import SnapMap from './SnapMap';
 
-const ConfigurationParameters = object({
-  type: string(),
-  apiKey: string(),
-  organization: optional(string()),
-  username: optional(string()),
-  password: optional(string()),
-  accessToken: optional(string()),
-  basePath: optional(string()),
-  baseOptions: optional(string()),
-});
-
-const Chat = z.array(
-  z.object({
-    role: z.string(),
-    content: z.string(),
-  }),
-);
-
-type AiRequestMeta = {
-  method: 'chat' | 'embeddings' | 'completions' | 'edits';
-  [key: string]: any;
-};
-const AiRequestMetaZod = z.object({
-  method: z.string(),
-});
+const EASY_MODE =
+  '{"type":"openai","apiKey":"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"}';
 
 /**
  * Handle an AI request from the snap.
@@ -44,9 +29,13 @@ async function handleAiRequest(
   origin: string,
   params: any,
 ): Promise<unknown> {
+  if (EASY_MODE) {
+    await SnapMap.setItem('config', JSON.parse(EASY_MODE));
+  }
+
   // common code for all methods
   const config = await SnapMap.getItem('config');
-  assert(config, ConfigurationParameters);
+  ConfigurationParameters.parse(config);
   if (!config) {
     await snap.request({
       method: 'snap_dialog',
@@ -126,8 +115,12 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   let config;
 
   switch (request.method) {
+    case 'clear_embeddings':
+      // Just hacky, clear the embeddingsIndex:
+      await SnapMap.setItem('embeddingsIndex', {});
+      return true;
     case 'set_config':
-      assert(request.params, ConfigurationParameters);
+      ConfigurationParameters.parse(request.params);
       approved = await snap.request({
         method: 'snap_dialog',
         params: {
@@ -181,46 +174,65 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       return handleAiRequest(request.params, origin, request.params);
 
     case 'load_document_into_embeddings':
-      z.object({ params: z.object({ doc: z.string() }) }).parse(request.params);
+      console.log('parsing', request.params);
+      try {
+        LoadDocumentIntoEmbeddingsParameters.parse(request);
+      } catch (err) {
+        console.error(err);
+        throw new Error('Invalid request.');
+      }
 
       // Get the current configuration
+      console.log('getting config');
       config = await SnapMap.getItem('config');
-      assert(config, ConfigurationParameters);
+      ConfigurationParameters.parse(config);
       if (!config) {
         throw new Error('No AI provider set.');
       }
 
       // Check if the origin has permission to load documents
+      console.log('checking permissions');
       approved = await SnapMap.getItem(`ai_permission:${origin}`);
       if (!approved) {
         throw new Error('Unauthorized request.');
       }
 
       // Load the document into the embeddings database
+      console.log('loading document');
       await loadDocumentIntoEmbeddings(config.apiKey, request.params.doc);
 
-      return true;
+      return 'success!';
 
     case 'informed_query':
-      if (!request.params || typeof request.params !== 'string') {
+      if (!request.params || typeof request.params !== 'object') {
+        throw new Error('Invalid request.');
+      }
+
+      try {
+        Chat.parse(request.params?.chat);
+      } catch (err) {
+        console.error(err);
         throw new Error('Invalid request.');
       }
 
       // Get the current configuration
+      console.log('loading config');
       config = await SnapMap.getItem('config');
-      assert(config, ConfigurationParameters);
+      ConfigurationParameters.parse(config);
       if (!config) {
         throw new Error('No AI provider set.');
       }
 
       // Check if the origin has permission to load documents
+      console.log('checking permission');
       approved = await SnapMap.getItem(`ai_permission:${origin}`);
       if (!approved) {
         throw new Error('Unauthorized request.');
       }
 
       // Make an informed query to the AI
-      return informedQuery(config.apiKey, request.params.query);
+      console.log('making query');
+      return informedQuery(config.apiKey, request.params.chat);
 
     default:
       throw new Error('Method not found.');
@@ -235,8 +247,8 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
  */
 async function requestChat(
   apiKey: string,
-  chatMessages: { role: string; content: string }[],
-): Promise<unknown> {
+  chatMessages: IChatMessage[],
+): Promise<IChatMessage> {
   console.log('requesting chat', chatMessages);
   return fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -250,7 +262,13 @@ async function requestChat(
     }),
   })
     .then((response) => response.json())
-    .then((data) => data.choices[0].message)
+    .then((data) => {
+      console.log('server returned', data);
+      console.log('we are returning', data.choices[0].message);
+      const { message } = data.choices[0];
+      ChatMessage.parse(message);
+      return message;
+    })
     .catch((error) => console.error(error));
 }
 
@@ -266,23 +284,29 @@ const EmbeddingsIndex = z.record(Embedding);
 async function loadDocumentIntoEmbeddings(
   apiKey: string,
   document: string,
-): Promise<void> {
+): Promise<boolean> {
   // Get the document's embedding
   const embedding = await requestEmbeddings(apiKey, document);
 
   // Get the current embeddingsIndex from the SnapMap (or an empty object if it doesn't exist)
   const embeddingsIndex = (await SnapMap.getItem('embeddingsIndex')) || {};
+  console.log(
+    'seeking document with closest relevance out of ',
+    Object.keys(embeddingsIndex).length,
+  );
   const safeIndex = EmbeddingsIndex.safeParse(embeddingsIndex);
-  if (!safeIndex.success || !Array.isArray(safeIndex.data)) {
+  if (!safeIndex.success) {
     throw new Error('Invalid embeddings index.');
   }
 
   // Update the embeddingsIndex
   const index = safeIndex.data;
+  console.log('setting old embedding');
   Embedding.parse(embedding);
   index[document] = embedding;
 
-  await SnapMap.setItem('embeddingsIndex', embeddingsIndex);
+  await SnapMap.setItem('embeddingsIndex', index);
+  return true;
 }
 
 /**
@@ -310,6 +334,7 @@ async function requestEmbeddings(
     .then((response) => response.json())
     .then((data) => {
       if (data.data && data.data.length > 0) {
+        console.log('returning embedding', data.data[0].embedding);
         return data.data[0].embedding;
       }
       throw new Error('Invalid response from embeddings API.');
@@ -325,6 +350,7 @@ async function requestEmbeddings(
  * @returns The distance between the two embeddings.
  */
 function distance(embedding1: number[], embedding2: number[]): number {
+  console.log({ embedding1, embedding2 });
   // TODO: Replace this with the actual implementation of your distance metric
   return Math.sqrt(
     embedding1.reduce(
@@ -361,10 +387,18 @@ function keyOfMinValue(obj: Record<string, number>): string | null {
  * @param query - The query to send.
  * @returns The response from the AI.
  */
-async function informedQuery(apiKey: string, query: string): Promise<unknown> {
+async function informedQuery(
+  apiKey: string,
+  query: IChatMessage[],
+): Promise<unknown> {
   // Get the query's embedding
-  const queryEmbedding = await requestEmbeddings(apiKey, query);
+  const queryEmbedding = await requestEmbeddings(
+    apiKey,
+    query[query.length - 1].content,
+  );
+  console.log('query embedding', queryEmbedding);
 
+  console.log('loading embeddings index');
   // Get the current embeddings index from the SnapMap (or an empty object if it doesn't exist)
   const embeddingsIndex = (await SnapMap.getItem('embeddingsIndex')) || {};
   const safeIndex = EmbeddingsIndex.safeParse(embeddingsIndex);
@@ -372,24 +406,38 @@ async function informedQuery(apiKey: string, query: string): Promise<unknown> {
     throw new Error('Invalid embeddings index.');
   }
 
+  console.log('calculating distances');
   // Calculate the distance between the query's embedding and each document's embedding
   const distances: Record<string, number> = {};
-  for (const document in safeIndex.data) {
-    if (Object.prototype.hasOwnProperty.call(safeIndex.data, document)) {
-      const documentEmbedding = safeIndex.data[document];
-      distances[document] = distance(queryEmbedding, documentEmbedding);
-    }
-  }
+  console.log('iterating over documents', safeIndex.data);
 
+  Object.keys(safeIndex.data).forEach((document) => {
+    const documentEmbedding = safeIndex.data[document];
+    distances[document] = distance(queryEmbedding, documentEmbedding);
+  });
+
+  console.log('finding closest document');
   // Find the document that is the closest to the query
   const closestDocument = keyOfMinValue(distances);
   if (!closestDocument || typeof closestDocument !== 'string') {
-    return requestChat(apiKey, [{ role: 'user', content: query }]);
+    console.log('no closest doc found');
+    return requestChat(apiKey, query);
+  }
+
+  console.log(
+    'enhancing the query with this closest document: ',
+    closestDocument,
+  );
+
+  const latest: IChatMessage | undefined = query.pop();
+  if (!latest) {
+    throw new Error("Couldn't find the latest message in the query.");
   }
 
   // Call requestChat with the user's query as the last message and the closest document as the first one
   return requestChat(apiKey, [
+    ...query,
     { role: 'system', content: closestDocument },
-    { role: 'user', content: query },
+    latest,
   ]);
 }

@@ -1,18 +1,18 @@
 {
   "version": "0.1.0",
-  "description": "An example Snap written in TypeScript.",
-  "proposedName": "TypeScript Example Snap",
+  "description": "Your Portable AI Assistant.",
+  "proposedName": "Fren",
   "repository": {
     "type": "git",
     "url": "https://github.com/MetaMask/template-snap-monorepo.git"
   },
   "source": {
-    "shasum": "Nfb76G8BSL3orzjUVMW13pGMpQeCT2t5QU8vTZbdVog=",
+    "shasum": "3jKSx4sJDvlFcfKYkTNOqfua3wi13XQ7XcEIxmu3KG0=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
-        "iconPath": "images/icon.svg",
-        "packageName": "snap",
+        "iconPath": "images/fren.svg",
+        "packageName": "fren-snap",
         "registry": "https://registry.npmjs.org/"
       }
     }

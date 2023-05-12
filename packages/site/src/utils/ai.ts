@@ -1,6 +1,11 @@
 import { z } from 'zod';
-import { IChatMessage } from '../types/custom';
 import { defaultSnapOrigin } from '../config';
+import {
+  IChatMessage,
+  ChatMessage,
+  ConfigurationParameters,
+  Chat,
+} from '../../../../scripts/types';
 
 /**
  * Invoke the "hello" method from the example snap.
@@ -13,10 +18,21 @@ export const requestAIPermission = async () => {
   });
 };
 
+export const clearEmbeddings = async () => {
+  await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: {
+      snapId: defaultSnapOrigin,
+      request: { method: 'clear_embeddings' },
+    },
+  });
+};
+
 export const offerAIConfig = async (config: string) => {
   console.log('offering config', config);
   console.log(typeof config);
   const parsed = JSON.parse(config);
+  ConfigurationParameters.parse(parsed);
   console.log(parsed);
 
   return await window.ethereum.request({
@@ -27,11 +43,6 @@ export const offerAIConfig = async (config: string) => {
     },
   });
 };
-
-const Chat = z.object({
-  role: z.string(),
-  content: z.string(),
-});
 
 export const sendAIPrompt = async (
   prompt: IChatMessage[],
@@ -48,12 +59,17 @@ export const sendAIPrompt = async (
     },
   });
 
-  const chat = Chat.safeParse(result);
-  if (!chat.success) {
+  const chat = ChatMessage.safeParse(result);
+  console.log('parsing result', chat);
+  if (
+    !chat.success ||
+    !chat.data ||
+    !['user', 'assistant', 'system'].includes(chat.data.role)
+  ) {
     throw new Error('Invalid chat response');
   }
-
-  return chat.data;
+  const safeChat: IChatMessage = chat.data;
+  return safeChat;
 };
 
 export const requestEmbeddings = async (input: string): Promise<number[]> => {
@@ -78,32 +94,41 @@ export const requestEmbeddings = async (input: string): Promise<number[]> => {
 
 export const loadDocumentIntoEmbeddings = async (
   document: string,
-): Promise<void> => {
-  await window.ethereum.request({
+): Promise<boolean> => {
+  const res = await window.ethereum.request({
     method: 'wallet_invokeSnap',
     params: {
       snapId: defaultSnapOrigin,
       request: {
         method: 'load_document_into_embeddings',
-        params: [document],
+        params: { doc: document },
       },
     },
   });
+
+  return Boolean(res);
 };
 
 export const informedQuery = async (
   prompt: IChatMessage[],
 ): Promise<IChatMessage> => {
-  return await window.ethereum.request({
+  const result = await window.ethereum.request({
     method: 'wallet_invokeSnap',
     params: {
       snapId: defaultSnapOrigin,
       request: {
         method: 'informed_query',
         params: {
-          chat,
+          chat: prompt,
         },
       },
     },
   });
+
+  const chat = ChatMessage.safeParse(result);
+  if (!chat.success) {
+    throw new Error('Invalid chat response');
+  }
+
+  return chat.data;
 };

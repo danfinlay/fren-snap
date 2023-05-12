@@ -1,8 +1,8 @@
-import { SetStateAction, useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { ReactReplView } from 'awesome-react-repl';
 import { z } from 'zod';
 import styled from 'styled-components';
-import { Json } from '@metamask/snaps-types';
+import { IChatMessage } from '../../../../scripts/types';
 import { MetamaskActions, MetaMaskContext } from '../hooks';
 import {
   connectSnap,
@@ -13,6 +13,7 @@ import {
   loadDocumentIntoEmbeddings,
   informedQuery,
   shouldDisplayReconnectButton,
+  clearEmbeddings,
 } from '../utils';
 import {
   ConnectButton,
@@ -21,7 +22,6 @@ import {
   FormCard,
   Card,
 } from '../components';
-import { IChatMessage } from '../types/custom';
 
 const Container = styled.div`
   display: flex;
@@ -43,6 +43,10 @@ const Heading = styled.h1`
   margin-top: 0;
   margin-bottom: 2.4rem;
   text-align: center;
+  > img {
+    display: block;
+    max-width: 400px;
+  }
 `;
 
 const Span = styled.span`
@@ -68,25 +72,6 @@ const CardContainer = styled.div`
   width: 100%;
   height: 100%;
   margin-top: 1.5rem;
-`;
-
-const Notice = styled.div`
-  background-color: ${({ theme }) => theme.colors.background.alternative};
-  border: 1px solid ${({ theme }) => theme.colors.border.default};
-  color: ${({ theme }) => theme.colors.text.alternative};
-  border-radius: ${({ theme }) => theme.radii.default};
-  padding: 2.4rem;
-  margin-top: 2.4rem;
-  max-width: 60rem;
-  width: 100%;
-
-  & > * {
-    margin: 0;
-  }
-  ${({ theme }) => theme.mediaQueries.small} {
-    margin-top: 1.2rem;
-    padding: 1.6rem;
-  }
 `;
 
 const TerminalContainer = styled.div`
@@ -211,6 +196,7 @@ type Lines = Line[];
 const Index = () => {
   const [state, dispatch] = useContext(MetaMaskContext);
   const [lines, setLines] = useState<Lines>([]);
+  const [informedLines, setInformedLines] = useState<Lines>([]);
 
   const handleConnectClick = async () => {
     try {
@@ -236,13 +222,12 @@ const Index = () => {
     }
   };
 
-  const handleOfferAIConfig = async (config) => {
+  const handleOfferAIConfig = async (config: string) => {
     try {
       return await offerAIConfig(config);
     } catch (e) {
       console.error(e);
       dispatch({ type: MetamaskActions.SetError, payload: e });
-      return;
     }
   };
 
@@ -250,6 +235,7 @@ const Index = () => {
     <Container>
       <Heading>
         Welcome to <Span>Fren</Span>
+        <img src="./splash.png" width="100%" height="100%" alt="Fren" />
       </Heading>
       <Subtitle>
         Fren is your personal AI assistant that you can take around the web, who
@@ -391,6 +377,91 @@ const Index = () => {
         )}
 
         <EmbeddingLoadingForm handleOfferDoc={handleOfferDoc} />
+
+        {state.installedSnap && (
+          <TerminalContainer>
+            <ReactReplView
+              title="Informed AI Chat"
+              width="100%"
+              height={300}
+              lines={informedLines}
+              onSubmit={(userInput: string) => {
+                setInformedLines((prevLines: any) => [
+                  ...prevLines,
+                  {
+                    type: 'input',
+                    value: userInput,
+                  },
+                ]);
+
+                const chatMessages: IChatMessage[] = [
+                  {
+                    role: 'user',
+                    content: userInput,
+                  },
+                ];
+                informedLines.forEach((line) => {
+                  chatMessages.push({
+                    role: line.type === 'input' ? 'user' : 'assistant',
+                    content: line.value,
+                  });
+                });
+
+                informedQuery(chatMessages)
+                  .then((result: IChatMessage) => {
+                    const ChatM = z.object({
+                      role: z.string(),
+                      content: z.string(),
+                    });
+                    ChatM.parse(result);
+                    console.dir({ result });
+                    setInformedLines((prevLines: Line[]) => {
+                      const newLine: Line = {
+                        type: 'output',
+                        value: result.content,
+                      };
+                      const newLines: Line[] = [...prevLines, newLine];
+                      return newLines;
+                    });
+                  })
+                  .catch((e: { message: any }) => {
+                    setInformedLines((prevLines: any) => [
+                      ...prevLines,
+                      {
+                        type: 'output',
+                        value: `Error: ${e.message}`,
+                      },
+                    ]);
+                    console.error(e);
+                    return e.message;
+                  });
+              }}
+            />
+          </TerminalContainer>
+        )}
+
+        <Card
+          content={{
+            title: 'Advanced: Clear embeddings',
+            description: 'To reset the presentation',
+            button: (
+              <button
+                onClick={() => {
+                  clearEmbeddings().then(console.log).catch(console.error);
+                }}
+                disabled={!state.installedSnap}
+              >
+                Clear
+              </button>
+            ),
+          }}
+          disabled={!state.installedSnap}
+          fullWidth={
+            state.isFlask &&
+            Boolean(state.installedSnap) &&
+            !shouldDisplayReconnectButton(state.installedSnap)
+          }
+        />
       </CardContainer>
     </Container>
   );

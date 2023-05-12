@@ -1,6 +1,6 @@
-# TypeScript Example Snap
+# Fren Snap
 
-This Snap demonstrates how to develop a Snap with TypeScript.
+Lets you provide an AI API to dapps and snaps.
 
 ## Notes
 
