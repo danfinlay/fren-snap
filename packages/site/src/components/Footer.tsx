@@ -35,6 +35,12 @@ export const Footer = () => {
 
   return (
     <FooterWrapper>
+      <p>
+        Developers:{' '}
+        <a href="https://github.com/danfinlay/fren-snap/blob/main/packages/site/src/utils/ai.ts">
+          view usage examples on GitHub
+        </a>
+      </p>
       <PoweredByButton href="https://docs.metamask.io/" target="_blank">
         <MetaMaskFox />
         <PoweredByContainer>
