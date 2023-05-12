@@ -13,9 +13,6 @@ import {
 import { messages } from './messages';
 import SnapMap from './SnapMap';
 
-const EASY_MODE =
-  '{"type":"openai","apiKey":"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"}';
-
 /**
  * Handle an AI request from the snap.
  *
@@ -29,9 +26,6 @@ async function handleAiRequest(
   origin: string,
   params: any,
 ): Promise<unknown> {
-  if (EASY_MODE) {
-    await SnapMap.setItem('config', JSON.parse(EASY_MODE));
-  }
 
   // common code for all methods
   const config = await SnapMap.getItem('config');
