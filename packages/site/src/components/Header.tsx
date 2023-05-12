@@ -1,5 +1,6 @@
 import { useContext } from 'react';
 import styled, { useTheme } from 'styled-components';
+import mainLogo from '../../public/fren.png';
 import { MetamaskActions, MetaMaskContext } from '../hooks';
 import { connectSnap, getThemePreference, getSnap } from '../utils';
 import { HeaderButtons } from './Buttons';
@@ -61,7 +62,7 @@ export const Header = ({
   return (
     <HeaderWrapper>
       <LogoWrapper>
-        <img src="./fren.png" width="60px" height="60px" />
+        <img src={mainLogo} width="60px" height="60px" />
         <Title>Fren</Title>
       </LogoWrapper>
       <RightContainer>
