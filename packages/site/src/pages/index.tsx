@@ -236,7 +236,7 @@ const Index = () => {
       <Heading>
         Welcome to <Span>Fren</Span>
         <img
-          src="http://danfinlay.com/fren/splash.png"
+          src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdanfinlay%2FgKuTEJpmwB.png?alt=media&token=b0e40d65-8f34-4303-8cd7-a14063499328"
           width="100%"
           height="100%"
           alt="Fren"

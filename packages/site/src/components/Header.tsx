@@ -63,7 +63,7 @@ export const Header = ({
     <HeaderWrapper>
       <LogoWrapper>
         <img
-          src="http://danfinlay.com/fren/fren.png"
+          src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fdanfinlay%2FnYxLm1o7yi.png?alt=media&token=806eeba8-a3f9-4e9d-844c-bd3e857feabd"
           width="60px"
           height="60px"
         />
