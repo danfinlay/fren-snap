@@ -22,6 +22,7 @@ import {
   FormCard,
   Card,
 } from '../components';
+const example: string = require("!!raw-loader!./../utils/ai.ts");
 
 const Container = styled.div`
   display: flex;
@@ -154,7 +155,7 @@ const ConfigForm = (props: { handleOfferAIConfig: any }) => {
 
 const EmbeddingLoadingForm = (props: { handleOfferDoc: any }) => {
   const { handleOfferDoc } = props;
-  const [config, setConfig] = useState('');
+  const [config, setConfig] = useState(example.default.toString());
 
   const content = {
     description:

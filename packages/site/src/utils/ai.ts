@@ -1,3 +1,8 @@
+/** How to interact with the Fren AI Snap, as found at fren.cc
+ * You can find these docs at https://github.com/danfinlay/fren-snap/blob/main/packages/site/src/utils/ai.ts
+ * This API is available to websites and other MetaMask snaps for whom Fren is installed.
+ */
+
 import { z } from 'zod';
 import { defaultSnapOrigin } from '../config';
 import {
@@ -6,6 +11,13 @@ import {
   ConfigurationParameters,
   Chat,
 } from '../../../../scripts/types';
+
+/**
+ * type IChatMessage = {
+ * role: string;
+ * content: string;
+ * };
+ */
 
 /**
  * Invoke the "hello" method from the example snap.
@@ -44,6 +56,11 @@ export const offerAIConfig = async (config: string) => {
   });
 };
 
+/**
+ * Returns a chat response from the AI.
+ * @param prompt - The chat history for the AI to respond to.
+ * @returns The response from the AI. 
+ */
 export const sendAIPrompt = async (
   prompt: IChatMessage[],
 ): Promise<IChatMessage> => {
@@ -72,6 +89,12 @@ export const sendAIPrompt = async (
   return safeChat;
 };
 
+/**
+ * Returns an embeddings array for a given input string.
+ *
+ * @param input - The input string to get an embedding for.
+ * @returns An array of embeddings.
+ */
 export const requestEmbeddings = async (input: string): Promise<number[]> => {
   console.log({ input });
   const result = await window.ethereum.request({
@@ -92,6 +115,13 @@ export const requestEmbeddings = async (input: string): Promise<number[]> => {
   return result;
 };
 
+/**
+ * Loads a document into the user's embeddings index, which is incorporated into
+ * queries to `informedQuery`.
+ *
+ * @param document - The document to load into the embeddings index.
+ * @returns True if the document was loaded successfully, false otherwise.
+ */
 export const loadDocumentIntoEmbeddings = async (
   document: string,
 ): Promise<boolean> => {
@@ -109,6 +139,12 @@ export const loadDocumentIntoEmbeddings = async (
   return Boolean(res);
 };
 
+/**
+ * Asks Fren to provide a response to a given prompt,
+ * while incorporating the most relevant document from the user's embeddings index.
+ * @param prompt - The prompt to send to the AI.
+ * @returns The response from the AI.
+ */
 export const informedQuery = async (
   prompt: IChatMessage[],
 ): Promise<IChatMessage> => {
